@@ -18,15 +18,37 @@ class AdminController extends Controller
     // ==========================================
     // DASHBOARD
     // ==========================================
+
     public function index()
     {
         $logs = LogAktivitas::with('user')->latest()->take(10)->get();
         return view('admin.dashboard', compact('logs'));
     }
 
+    public function indexLogAktivitas(Request $request)
+    {
+        $search = $request->input('search');
+
+        $logs = LogAktivitas::with('user')
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('aktivitas', 'like', "%{$search}%")
+                        ->orWhereHas('user', function ($user) use ($search) {
+                            $user->where('name', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('admin.logaktivitas.index', compact('logs', 'search'));
+    }
+
     // ==========================================
     // CRUD ALAT
     // ==========================================
+
     public function indexAlat(Request $request)
     {
         $search = $request->input('search');
@@ -55,12 +77,12 @@ class AdminController extends Controller
     public function storeAlat(Request $request)
     {
         $request->validate([
-            'nama_alat'      => 'required|string|max:255',
-            'kategori_id'    => 'required|exists:kategori,id',
-            'stok'           => 'required|integer|min:0',
+            'nama_alat' => 'required|string|max:255',
+            'kategori_id' => 'required|exists:kategori,id',
+            'stok' => 'required|integer|min:0',
             'status_kondisi' => 'required|string|max:100',
-            'deskripsi'      => 'nullable|string',
-            'gambar'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'deskripsi' => 'nullable|string',
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         $data = $request->all();
@@ -74,8 +96,7 @@ class AdminController extends Controller
 
         Alat::create($data);
 
-        return redirect()
-            ->route('admin.alat.index')
+        return redirect()->route('admin.alat.index')
             ->with('success', 'Data alat berhasil ditambahkan.');
     }
 
@@ -83,7 +104,6 @@ class AdminController extends Controller
     {
         $alat = Alat::findOrFail($id);
         $kategoris = Kategori::all();
-
         return view('admin.alat.edit', compact('alat', 'kategoris'));
     }
 
@@ -92,12 +112,12 @@ class AdminController extends Controller
         $alat = Alat::findOrFail($id);
 
         $request->validate([
-            'nama_alat'      => 'required|string|max:255',
-            'kategori_id'    => 'required|exists:kategori,id',
-            'stok'           => 'required|integer|min:0',
+            'nama_alat' => 'required|string|max:255',
+            'kategori_id' => 'required|exists:kategori,id',
+            'stok' => 'required|integer|min:0',
             'status_kondisi' => 'required|string|max:100',
-            'deskripsi'      => 'nullable|string',
-            'gambar'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'deskripsi' => 'nullable|string',
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         $data = $request->all();
@@ -115,8 +135,7 @@ class AdminController extends Controller
 
         $alat->update($data);
 
-        return redirect()
-            ->route('admin.alat.index')
+        return redirect()->route('admin.alat.index')
             ->with('success', 'Data alat berhasil diperbarui.');
     }
 
@@ -130,14 +149,14 @@ class AdminController extends Controller
 
         $alat->delete();
 
-        return redirect()
-            ->route('admin.alat.index')
+        return redirect()->route('admin.alat.index')
             ->with('success', 'Data alat berhasil dihapus.');
     }
 
     // ==========================================
     // CRUD KATEGORI
     // ==========================================
+
     public function indexKategori(Request $request)
     {
         $search = $request->input('search');
@@ -165,8 +184,7 @@ class AdminController extends Controller
 
         Kategori::create($request->all());
 
-        return redirect()
-            ->route('admin.kategori.index')
+        return redirect()->route('admin.kategori.index')
             ->with('success', 'Kategori berhasil ditambahkan.');
     }
 
@@ -186,8 +204,7 @@ class AdminController extends Controller
 
         $kategori->update($request->all());
 
-        return redirect()
-            ->route('admin.kategori.index')
+        return redirect()->route('admin.kategori.index')
             ->with('success', 'Kategori berhasil diperbarui.');
     }
 
@@ -196,23 +213,34 @@ class AdminController extends Controller
         $kategori = Kategori::findOrFail($id);
         $kategori->delete();
 
-        return redirect()
-            ->route('admin.kategori.index')
+        return redirect()->route('admin.kategori.index')
             ->with('success', 'Kategori berhasil dihapus.');
     }
 
-    // ==========================================
+       // ==========================================
     // USER MANAGEMENT
     // ==========================================
+
     public function indexUser(Request $request)
     {
         $search = $request->input('search');
 
         $users = User::when($search, function ($query, $search) {
-                return $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('role', 'like', "%{$search}%");
+                });
             })
-            ->latest()
+            ->orderByRaw("
+                CASE
+                    WHEN role = 'admin' THEN 1
+                    WHEN role = 'petugas' THEN 2
+                    WHEN role = 'peminjam' THEN 3
+                    ELSE 4
+                END
+            ")
+            ->orderBy('name', 'asc')
             ->paginate(10)
             ->withQueryString();
 
@@ -227,25 +255,46 @@ class AdminController extends Controller
     public function storeUser(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|string|email|max:255|unique:users,email',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
-            'role'     => 'required|in:admin,petugas,peminjam',
+            'role' => 'required|in:admin,petugas,peminjam',
+            'no_hp' => 'nullable|string|max:20',
+            'foto_profile' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email,
             'password' => bcrypt($request->password),
-            'role'     => $request->role,
-        ]);
+            'role' => $request->role,
+            'no_hp' => $request->no_hp,
+        ];
 
-        return redirect()->route('admin.user.index')->with('success', 'User berhasil ditambahkan.');
+        if ($request->hasFile('foto_profile')) {
+            $folder = public_path('profile');
+
+            if (!file_exists($folder)) {
+                mkdir($folder, 0755, true);
+            }
+
+            $file = $request->file('foto_profile');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move($folder, $filename);
+
+            $data['foto_profile'] = 'profile/' . $filename;
+        }
+
+        User::create($data);
+
+        return redirect()->route('admin.user.index')
+            ->with('success', 'User berhasil ditambahkan.');
     }
 
     public function editUser($id)
     {
         $user = User::findOrFail($id);
+
         return view('admin.user.edit', compact('user'));
     }
 
@@ -254,38 +303,74 @@ class AdminController extends Controller
         $user = User::findOrFail($id);
 
         $request->validate([
-            'name'  => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $id,
-            'role'  => 'required|in:admin,petugas,peminjam',
+            'role' => 'required|in:admin,petugas,peminjam',
+            'no_hp' => 'nullable|string|max:20',
+            'password' => 'nullable|string|min:8',
+            'foto_profile' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         $data = [
-            'name'  => $request->name,
+            'name' => $request->name,
             'email' => $request->email,
-            'role'  => $request->role,
+            'role' => $request->role,
+            'no_hp' => $request->no_hp,
         ];
 
         if ($request->filled('password')) {
-            $request->validate(['password' => 'string|min:8']);
             $data['password'] = bcrypt($request->password);
+        }
+
+        if ($request->hasFile('foto_profile')) {
+            if ($user->foto_profile &&
+                file_exists(public_path($user->foto_profile))) {
+                unlink(public_path($user->foto_profile));
+            }
+
+            $folder = public_path('profile');
+
+            if (!file_exists($folder)) {
+                mkdir($folder, 0755, true);
+            }
+
+            $file = $request->file('foto_profile');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $file->move($folder, $filename);
+
+            $data['foto_profile'] = 'profile/' . $filename;
         }
 
         $user->update($data);
 
-        return redirect()->route('admin.user.index')->with('success', 'Data user berhasil diperbarui.');
+        return redirect()->route('admin.user.index')
+            ->with('success', 'Data user berhasil diperbarui.');
     }
 
     public function destroyUser($id)
     {
         $user = User::findOrFail($id);
+
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.user.index')
+                ->with('error', 'User dengan role Admin tidak dapat dihapus.');
+        }
+
+        if ($user->foto_profile &&
+            file_exists(public_path($user->foto_profile))) {
+            unlink(public_path($user->foto_profile));
+        }
+
         $user->delete();
 
-        return redirect()->route('admin.user.index')->with('success', 'User berhasil dihapus.');
+        return redirect()->route('admin.user.index')
+            ->with('success', 'User berhasil dihapus.');
     }
 
     // ==========================================
     // TRANSAKSI PEMINJAMAN
     // ==========================================
+
     public function indexPeminjaman(Request $request)
     {
         $search = $request->input('search');
@@ -301,35 +386,37 @@ class AdminController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        return view('admin.peminjaman.index', compact('peminjamans', 'search'));
+        return view('admin.peminjaman.index', compact('peminjaman', 'search'));
     }
 
     public function createPeminjaman()
     {
         $users = User::where('role', 'peminjam')->get();
         $alats = Alat::where('stok', '>', 0)->get();
+
         return view('admin.peminjaman.create', compact('users', 'alats'));
     }
 
     public function storePeminjaman(Request $request)
     {
         $request->validate([
-            'user_id'          => 'required|exists:users,id',
-            'tgl_pinjam'       => 'required|date',
+            'user_id' => 'required|exists:users,id',
+            'tgl_pinjam' => 'required|date',
             'tgl_kembali_plan' => 'required|date|after_or_equal:tgl_pinjam',
-            'alat_id'          => 'required|array',
-            'alat_id.*'        => 'exists:alat,id',
-            'jumlah'           => 'required|array',
-            'jumlah.*'         => 'integer|min:1',
+            'alat_id' => 'required|array',
+            'alat_id.*' => 'exists:alat,id',
+            'jumlah' => 'required|array',
+            'jumlah.*' => 'integer|min:1',
         ]);
 
         DB::beginTransaction();
+
         try {
             $peminjaman = Peminjaman::create([
-                'user_id'          => $request->user_id,
-                'tgl_pinjam'       => $request->tgl_pinjam,
+                'user_id' => $request->user_id,
+                'tgl_pinjam' => $request->tgl_pinjam,
                 'tgl_kembali_plan' => $request->tgl_kembali_plan,
-                'status'           => 'diajukan',
+                'status' => 'diajukan',
             ]);
 
             foreach ($request->alat_id as $index => $alatId) {
@@ -342,13 +429,15 @@ class AdminController extends Controller
 
                 DetailPinjam::create([
                     'peminjaman_id' => $peminjaman->id,
-                    'alat_id'        => $alatId,
-                    'jumlah'         => $jumlahPinjam,
+                    'alat_id' => $alatId,
+                    'jumlah' => $jumlahPinjam,
                 ]);
             }
 
             DB::commit();
-            return redirect()->route('admin.peminjaman.index')->with('success', 'Data peminjaman berhasil diajukan.');
+
+            return redirect()->route('admin.peminjaman.index')
+                ->with('success', 'Data peminjaman berhasil diajukan.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()->with('error', $e->getMessage());
@@ -364,19 +453,24 @@ class AdminController extends Controller
         ]);
 
         DB::beginTransaction();
+
         try {
             $statusLama = $peminjaman->status;
             $statusBaru = $request->status;
 
-            if ($statusLama != 'dipinjam' && $statusBaru == 'dipinjam') {
+            if ($statusLama !== 'dipinjam' && $statusBaru === 'dipinjam') {
                 foreach ($peminjaman->detailPinjam as $detail) {
                     $alat = $detail->alat;
+
                     if ($alat->stok < $detail->jumlah) {
-                        throw new \Exception("Stok alat {$alat->nama_alat} tidak mencukupi untuk dipinjam.");
+                        throw new \Exception(
+                            "Stok alat {$alat->nama_alat} tidak mencukupi untuk dipinjam."
+                        );
                     }
+
                     $alat->decrement('stok', $detail->jumlah);
                 }
-            } elseif ($statusLama == 'dipinjam' && ($statusBaru == 'selesai')) {
+            } elseif ($statusLama === 'dipinjam' && $statusBaru === 'selesai') {
                 foreach ($peminjaman->detailPinjam as $detail) {
                     $detail->alat->increment('stok', $detail->jumlah);
                 }
@@ -385,7 +479,9 @@ class AdminController extends Controller
             $peminjaman->update(['status' => $statusBaru]);
 
             DB::commit();
-            return redirect()->route('admin.peminjaman.index')->with('success', 'Status peminjaman berhasil diperbarui.');
+
+            return redirect()->route('admin.peminjaman.index')
+                ->with('success', 'Status peminjaman berhasil diperbarui.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', $e->getMessage());
@@ -396,7 +492,7 @@ class AdminController extends Controller
     {
         $peminjaman = Peminjaman::with('detailPinjam')->findOrFail($id);
 
-        if ($peminjaman->status == 'dipinjam') {
+        if ($peminjaman->status === 'dipinjam') {
             foreach ($peminjaman->detailPinjam as $detail) {
                 $detail->alat->increment('stok', $detail->jumlah);
             }
@@ -404,17 +500,23 @@ class AdminController extends Controller
 
         $peminjaman->delete();
 
-        return redirect()->route('admin.peminjaman.index')->with('success', 'Data peminjaman berhasil dihapus.');
+        return redirect()->route('admin.peminjaman.index')
+            ->with('success', 'Data peminjaman berhasil dihapus.');
     }
 
     // ==========================================
     // TRANSAKSI PENGEMBALIAN
     // ==========================================
+
     public function indexPengembalian(Request $request)
     {
         $search = $request->input('search');
 
-        $pengembalians = Pengembalian::with(['peminjaman.user', 'peminjaman.detailPinjam.alat', 'petugas'])
+        $pengembalians = Pengembalian::with([
+                'peminjaman.user',
+                'peminjaman.detailPinjam.alat',
+                'petugas',
+            ])
             ->when($search, function ($query, $search) {
                 return $query->where('kondisi_kembali', 'like', "%{$search}%")
                     ->orWhereHas('peminjaman.user', function ($q) use ($search) {
@@ -441,19 +543,20 @@ class AdminController extends Controller
     public function storePengembalian(Request $request)
     {
         $request->validate([
-            'peminjaman_id'   => 'required|exists:peminjaman,id',
-            'tgl_kembali'     => 'required|date',
+            'peminjaman_id' => 'required|exists:peminjaman,id',
+            'tgl_kembali' => 'required|date',
             'kondisi_kembali' => 'required|string|max:255',
-            'denda_tambahan'  => 'nullable|integer|min:0',
+            'denda_tambahan' => 'nullable|integer|min:0',
         ]);
 
         DB::beginTransaction();
+
         try {
-            $peminjaman = Peminjaman::with('detailPinjam.alat')->findOrFail($request->peminjaman_id);
+            $peminjaman = Peminjaman::with('detailPinjam.alat')
+                ->findOrFail($request->peminjaman_id);
 
             $tglPlan = Carbon::parse($peminjaman->tgl_kembali_plan);
             $tglAktual = Carbon::parse($request->tgl_kembali);
-
             $dendaOtomatis = 0;
             $tarifDendaPerHari = 5000;
 
@@ -466,11 +569,11 @@ class AdminController extends Controller
             $totalDenda = $dendaOtomatis + $dendaTambahan;
 
             Pengembalian::create([
-                'peminjaman_id'   => $request->peminjaman_id,
-                'tgl_kembali'     => $request->tgl_kembali,
+                'peminjaman_id' => $request->peminjaman_id,
+                'tgl_kembali' => $request->tgl_kembali,
                 'kondisi_kembali' => $request->kondisi_kembali,
-                'denda'           => $totalDenda,
-                'petugas_id'      => auth()->id(),
+                'denda' => $totalDenda,
+                'petugas_id' => auth()->id(),
             ]);
 
             $peminjaman->update(['status' => 'selesai']);
@@ -482,8 +585,13 @@ class AdminController extends Controller
             }
 
             DB::commit();
+
             return redirect()->route('admin.pengembalian.index')
-                ->with('success', 'Pengembalian berhasil diproses. Denda otomatis terhitung: Rp ' . number_format($totalDenda, 0, ',', '.'));
+                ->with(
+                    'success',
+                    'Pengembalian berhasil diproses. Denda otomatis terhitung: Rp ' .
+                    number_format($totalDenda, 0, ',', '.')
+                );
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()->with('error', $e->getMessage());
@@ -492,14 +600,17 @@ class AdminController extends Controller
 
     public function destroyPengembalian($id)
     {
-        $pengembalian = Pengembalian::with('peminjaman.detailPinjam.alat')->findOrFail($id);
+        $pengembalian = Pengembalian::with('peminjaman.detailPinjam.alat')
+            ->findOrFail($id);
 
         DB::beginTransaction();
+
         try {
             $peminjaman = $pengembalian->peminjaman;
 
             if ($peminjaman) {
                 $peminjaman->update(['status' => 'dipinjam']);
+
                 foreach ($peminjaman->detailPinjam as $detail) {
                     if ($detail->alat) {
                         $detail->alat->decrement('stok', $detail->jumlah);
@@ -510,7 +621,9 @@ class AdminController extends Controller
             $pengembalian->delete();
 
             DB::commit();
-            return redirect()->route('admin.pengembalian.index')->with('success', 'Data pengembalian berhasil dihapus.');
+
+            return redirect()->route('admin.pengembalian.index')
+                ->with('success', 'Data pengembalian berhasil dihapus.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', $e->getMessage());

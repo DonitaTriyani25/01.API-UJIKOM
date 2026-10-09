@@ -60,6 +60,25 @@
             gap: 8px;
         }
 
+        /* =====================================================
+           NAMA USER YANG LOGIN
+        ===================================================== */
+
+        .logged-user {
+            display: flex;
+            align-items: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 9px 10px;
+            white-space: nowrap;
+        }
+
+        .logged-user strong {
+            margin-left: 4px;
+            font-weight: 700;
+        }
+
         .header-menu a,
         .logout-button {
             text-decoration: none;
@@ -636,6 +655,11 @@
                 padding: 7px 9px;
             }
 
+            .logged-user {
+                font-size: 9px;
+                padding: 7px 4px;
+            }
+
             .stats {
                 grid-template-columns: 1fr;
             }
@@ -685,9 +709,28 @@
 
         <div class="header-menu">
 
+            <!-- =================================================
+                 USER YANG SEDANG LOGIN
+            ================================================= -->
+
+            <div class="logged-user">
+                👤 &nbsp; Logged in as :
+                <strong>
+                    {{ Auth::user()->name ?? Auth::user()->nama ?? 'Peminjam' }}
+                </strong>
+            </div>
+
+            <!-- =================================================
+                 RIWAYAT PINJAM
+            ================================================= -->
+
             <a href="{{ route('peminjam.riwayat') }}">
                 ↻ &nbsp; Riwayat Pinjam
             </a>
+
+            <!-- =================================================
+                 LOGOUT
+            ================================================= -->
 
             <form
                 action="{{ route('logout') }}"
@@ -1476,12 +1519,10 @@
 
 
             if (searchInput) {
-
                 searchInput.addEventListener(
                     'input',
                     searchAlat
                 );
-
             }
 
 
@@ -1492,59 +1533,39 @@
             const form =
                 document.getElementById('peminjamanForm');
 
-
             if (form) {
-
                 form.addEventListener('submit', function (event) {
-
                     let selected = 0;
 
-
                     checkboxes.forEach(function (checkbox) {
-
                         if (checkbox.checked) {
                             selected++;
                         }
-
                     });
 
 
                     if (selected === 0) {
-
                         event.preventDefault();
-
                         alert(
                             'Silakan pilih minimal satu alat.'
                         );
-
                         return;
-
                     }
 
 
                     if (!returnDate.value) {
-
                         event.preventDefault();
-
                         alert(
                             'Silakan tentukan tanggal kembali.'
                         );
-
                         return;
 
                     }
-
                 });
-
             }
 
-
             updateButton();
-
         });
-
     </script>
-
 </body>
-
 </html>

@@ -15,9 +15,10 @@
     </div>
 @endif
 
-<div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-    <div class="p-5 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row justify-between items-center gap-4">
-        <h3 class="text-lg font-bold text-gray-800">Daftar Transaksi Peminjaman</h3>
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+        <!-- Header, Form Search, & Tombol Tambah User -->
+        <div class="p-5 border-b border-gray-200 bg-gray-50 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <h3 class="text-lg font-bold text-gray-800">Daftar Transaksi Peminjaman</h3>
 
         <div class="flex items-center gap-3 w-full md:w-auto">
             <!-- Form Search -->
@@ -98,14 +99,16 @@
                                 </form>
 
                                 <!-- Tombol Hapus -->
-                                <form action="{{ route('admin.peminjaman.destroy', $item->id) }}" method="POST"
-                                    onsubmit="return confirm('Yakin ingin menghapus data peminjaman ini?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold transition w-full">
-                                        Hapus
-                                    </button>
-                                </form>
+                                @if($item->status == 'selesai')
+                                    <form action="{{ route('admin.peminjaman.destroy', $item->id) }}" method="POST"
+                                        onsubmit="return confirm('Yakin ingin menghapus data peminjaman ini?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs font-semibold transition w-full">
+                                            Hapus
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Dashboard Admin')</title>
+    <title>@yield('title', 'Dashboard')</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans antialiased">
@@ -12,8 +12,8 @@
 
         <!-- Sidebar -->
         <aside class="w-64 bg-gray-900 text-white flex flex-col hidden md:flex">
-            <div class="p-5 text-xl font-bold tracking-wider border-b border-gray-800">
-                PANEL ADMIN
+            <div class="p-5 text-xl font-bold tracking-wider border-b border-gray-800 uppercase">
+                PANEL {{ auth()->user()->role }}
             </div>
             
             <nav class="flex-1 p-4 space-y-2">
@@ -47,6 +47,11 @@
                     <a href="{{ route('admin.pengembalian.index') }}"
                         class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('admin.pengembalian*') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
                         Kelola Pengembalian
+                    </a>
+
+                    <a href="{{ route('admin.logaktivitas.index') }}"
+                        class="block px-4 py-2 rounded-lg transition {{ request()->routeIs('admin.LogAktivitas*') ? 'bg-gray-800 text-white font-medium shadow' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+                        Kelola Log Aktivitas
                     </a>
                 @endif
 
